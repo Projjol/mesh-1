@@ -148,7 +148,7 @@ class Grocery < ApplicationRecord
     
     parent.users.each do |user|
       buttons = []
-      distance = cal_distance(current_user.latlong, user.latlong)/1000.0
+      distance = cal_distance(current_user.latlong, user.latlong)/1000.0 rescue 0.0
       distance = distance.round(2)
       buttons << {
         title: I18n.t("call"),
