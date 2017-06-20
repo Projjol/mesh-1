@@ -9,6 +9,13 @@ class User < ActiveRecord::Base
     user.send_select_language(message)
   end
 
+  after_initialize :init
+
+  def init
+    self.latlong = [0,0] if !latlong.blank?
+  end
+
+
   def delivery?
     !!delivery
   end
