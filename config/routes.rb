@@ -13,6 +13,10 @@ Rails.application.routes.draw do
 
   # Example resource route (maps HTTP verbs to controller actions automatically):
   #   resources :products
+  get 'get_dt_oauth' => "application#get_dt_oauth"
+  get 'incoming_digitaltown' => "application#incoming_digitaltown"
+  post 'incoming_slack' => "application#incoming_slack"
+  get 'incoming_digitaltown' => "application#incoming_digitaltown"
   mount Facebook::Messenger::Server, at: 'bot'
   # Example resource route with options:
   #   resources :products do

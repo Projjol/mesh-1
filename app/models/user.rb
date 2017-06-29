@@ -1,5 +1,5 @@
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
   def self.create_from_message(message)
@@ -13,6 +13,32 @@ class User < ActiveRecord::Base
 
   def init
     self.latlong = [0,0] if !latlong.blank?
+  end
+
+  def initiate_sso(code)
+    s = "curl --request POST \
+  --url https://api.digitaltown.com/sso/token \
+  --data '{\"grant_type\":\"authorization_code\",\"client_id\":\"#{ENV["DT_CLIENT_ID"]}\",\"client_secret\":\"#{ENV["DT_CLIENT_SECRET"]}\",\"code\":\"#{code}\",\"redirect_uri\":\"https://9df52743.ngrok.io/incoming_digitaltown\"}' -H 'content-type: application/json'"
+  puts "="*100
+  puts s
+    res = `#{s}`
+    update_attributes(auth: JSON.parse(res))
+    update_attributes(sso_details: get_details_from_digitaltown)
+  end
+
+  def get_details_from_digitaltown
+    res = `curl --request GET \
+  --url https://api.digitaltown.com/sso/users \
+  --header 'authorization: Bearer #{get_access_token}'`
+    return JSON.parse(res)
+  end
+
+  def get_access_token
+    return auth["access_token"]
+  end
+
+  def refresh_access_token
+    
   end
 
 
@@ -181,19 +207,43 @@ class User < ActiveRecord::Base
     buttons = {"continue_business_owner" => I18n.t('continue_business_owner'),  "continue_customer" => I18n.t('continue_customer')}
     send_buttons(message, I18n.t('hello', name: first_name), buttons)
   end
+
+  def ask_for_login
+    send_message(
+      attachment: {
+       type: 'template',
+        payload: {
+          template_type: 'button',
+          text: "Please login through Digital Town",
+          buttons: [
+            {
+              type: "web_url",
+              url: Rails.application.routes.url_helpers.get_dt_oauth_url(host: ENV["HOST"], user_id: id),
+              title: "Login",
+              webview_height_ratio: "tall"
+            }
+          ]
+        }
+      }
+    )
+  end
+
+  SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=email"
   # STATE = {0 => "ask_for_role", 1 => "ask_for_business", 2 => "ask_for_location", }
   # STATES = [ask_for_lang, ask_for_role, send_welcome_message, ask_for_business, ]
   def on_postback(postback)
     payload = postback.payload
     message = postback
     if payload == "continue_customer"
-      update_attributes(role: "customer", state: "state_ask_for_order")
+      update_attributes(role: "customer", state: "state_ask_for_login")
       postback.reply(text: I18n.t('signed_up_as_customer'))
-      ask_for_location(message)
+      # ask_for_location(message)
+      ask_for_login(message)
     elsif payload == "continue_business_owner"
-      update_attributes(role: "business", state: "state_ask_for_business")
+      update_attributes(role: "business", state: "state_ask_for_login")
       postback.reply(text: I18n.t('signed_up_as_business'))
-      ask_for_business(message)
+      ask_for_login(message)
+      # ask_for_business(message)
     # end
     elsif payload == "more_settings"
       send_more_settings(message)

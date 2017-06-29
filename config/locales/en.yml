@@ -20,7 +20,7 @@
 # available at http://guides.rubyonrails.org/i18n.html.
 
 en:
-  hello: "Hey %{name}, Pedler helps you discover nearby grocery stores. Continue as"
+  hello: "Hey %{name}, Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries.."
   greeting_text: "Discover nearby grocery and household essentials stores"
   continue_business_owner: "Store owner"
   continue_customer: "Customer"
