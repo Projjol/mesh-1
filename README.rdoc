@@ -6,11 +6,14 @@ working professional
 business image
 taxi drivers
 proxy bot for chatting
-
 slack
-  
 telegram
 
+===========
+wallet balance bug
+wthout -H contenttype it breaks
+// in urls
+===========
 
 sign up as entepreneur
   kind of business

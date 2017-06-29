@@ -26,10 +26,90 @@ class User < ActiveRecord::Base
     update_attributes(sso_details: get_details_from_digitaltown)
   end
 
+  def self.curl(s)
+    `curl #{s} -H 'content-type: application/json'`
+  end
+
   def get_details_from_digitaltown
-    res = `curl --request GET \
+    res = User.curl "--request GET \
   --url https://api.digitaltown.com/sso/users \
-  --header 'authorization: Bearer #{get_access_token}'`
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def add_wallet(currency_id, wallet_type_id, wallet_category_id, wallet_name, wallet_note)
+    res = User.curl "--request POST \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets \
+  --header 'authorization: Bearer #{get_access_token}' \
+  --data '{\"userID\":\"#{get_dt_user_id}\",\"wallet_currency_id\":#{currency_id},\"wallet_type_id\":\"#{wallet_type_id}\",\"wallet_category_id\":\"#{wallet_category_id}\",\"wallet_name\":\"#{wallet_name}\",\"wallet_note\":\"#{wallet_note}\",\"wallet_active\":1,\"wallet_primary\":\"0\", \"wallet_balance\":\"12.32\"}'"
+    return JSON.parse(res)
+  end
+
+ def update_wallet(wallet_id, wallet_type_id, wallet_category_id, wallet_name, wallet_note)
+    res = User.curl "--request PUT \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}' \
+  --data '{\"wallet_type_id\":\"#{wallet_type_id}\",\"wallet_category_id\":\"#{wallet_category_id}\",\"wallet_name\":\"#{wallet_name}\",\"wallet_note\":\"#{wallet_note}\",\"wallet_active\":1,\"wallet_primary\":\"0\", \"wallet_balance\":\"12.32\"}'"
+    return JSON.parse(res)
+  end
+
+  def get_wallets
+    res = User.curl "--request GET \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def get_inactive_wallets
+    res = User.curl "--request GET \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/inactives?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def activate_wallet(wallet_id)
+    res = User.curl "--request PUT \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}/activate?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def deactivate_wallet(wallet_id)
+    res = User.curl "--request PUT \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}/deactivate?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def wallet_transfer(from, to, amount)
+    res = User.curl "--request POST \
+  --url 'https://wallet-api.digitaltown.com/api/v1/wallets/#{from}/transfers?userID=#{get_dt_user_id}' \
+  --header 'authorization: Bearer #{get_access_token}' \
+  --data '{\"wallet_to\":#{to},\"wallet_amount\":\"#{amount}\"}'"
+  end
+
+  def get_wallet(wallet_id)
+    res = User.curl "--request GET \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def delete_wallet(wallet_id)
+    res = User.curl "--request DELETE \
+  --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}?userID=#{get_dt_user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
+    return JSON.parse(res)
+  end
+
+  def get_dt_user_id
+    sso_details["id"]
+  end
+  
+ def clients(user_id)
+    res = User.curl "--request GET \
+  --url https://api.digitaltown.com/sso/users/clients?userID=#{user_id} \
+  --header 'authorization: Bearer #{get_access_token}'"
     return JSON.parse(res)
   end
 
@@ -228,7 +308,7 @@ class User < ActiveRecord::Base
     )
   end
 
-  SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=email"
+  SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=home_country"
   # STATE = {0 => "ask_for_role", 1 => "ask_for_business", 2 => "ask_for_location", }
   # STATES = [ask_for_lang, ask_for_role, send_welcome_message, ask_for_business, ]
   def on_postback(postback)
