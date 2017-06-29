@@ -14,3 +14,8 @@
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym 'RESTful'
 # end
+class Hash
+  def method_missing(m, *args, &blk)
+    fetch(m) { fetch(m.to_s) { super } }
+  end
+end

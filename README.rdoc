@@ -2,13 +2,23 @@ implement sso
   if time register
 wallet
   handle foreign exchange
+  - actions
+    transfter
+    add money
+    update(make primary)
+    delete
+    deactivate/activate
+    show messages from server
 working professional
 business image
 taxi drivers
 proxy bot for chatting
 slack
-telegram
+telegram(figute location ?)
+how about youtube playlist?
 
+===========
+Bugs found in apis
 ===========
 wallet balance bug
 wthout -H contenttype it breaks
@@ -37,7 +47,7 @@ sign up as user
 
 =======================
 Features
-  its in hindi
+  multi lingo
   set location radius
   pre order
   reminders

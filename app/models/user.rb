@@ -1,5 +1,5 @@
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
   def self.create_from_message(message)
@@ -24,10 +24,17 @@ class User < ActiveRecord::Base
     res = `#{s}`
     update_attributes(auth: JSON.parse(res))
     update_attributes(sso_details: get_details_from_digitaltown)
+    send_message(text: "You are successfully logged in.")
   end
 
   def self.curl(s)
-    `curl #{s} -H 'content-type: application/json'`
+    puts "============"
+    puts "curl #{s}"
+    res = `curl #{s} -H 'content-type: application/json'`
+    puts "============"
+    puts res
+    puts "============"
+    return res
   end
 
   def get_details_from_digitaltown
@@ -49,7 +56,7 @@ class User < ActiveRecord::Base
     res = User.curl "--request PUT \
   --url https://wallet-api.digitaltown.com/api/v1/wallets/#{wallet_id}?userID=#{get_dt_user_id} \
   --header 'authorization: Bearer #{get_access_token}' \
-  --data '{\"wallet_type_id\":\"#{wallet_type_id}\",\"wallet_category_id\":\"#{wallet_category_id}\",\"wallet_name\":\"#{wallet_name}\",\"wallet_note\":\"#{wallet_note}\",\"wallet_active\":1,\"wallet_primary\":\"0\", \"wallet_balance\":\"12.32\"}'"
+  --data '{\"wallet_type_id\":\"#{wallet_type_id}\",\"wallet_category_id\":\"#{wallet_category_id}\",\"wallet_name\":\"#{wallet_name}\",\"wallet_note\":\"#{wallet_note}\",\"wallet_active\":1,\"wallet_primary\":\"0\"}'"
     return JSON.parse(res)
   end
 
@@ -86,6 +93,7 @@ class User < ActiveRecord::Base
   --url 'https://wallet-api.digitaltown.com/api/v1/wallets/#{from}/transfers?userID=#{get_dt_user_id}' \
   --header 'authorization: Bearer #{get_access_token}' \
   --data '{\"wallet_to\":#{to},\"wallet_amount\":\"#{amount}\"}'"
+    
   end
 
   def get_wallet(wallet_id)
@@ -307,6 +315,112 @@ class User < ActiveRecord::Base
       }
     )
   end
+  CURRENCY = JSON.parse(File.read("currency.json"))["result"].first["data"]
+
+  def get_currency(currency_id)
+    # CURRENCY.
+    # {"id"=>1, "cur_country"=>"United Arab Emirates", "cur_currency"=>"United Arab Emirates Dirham", "cur_code"=>"AED", "cur_symbol"=>"", "cur_thousand_separator"=>nil, "cur_decimal_separator"=>nil, "cur_country_iso_2"=>"AE", "cur_country_iso_3"=>"ARE", "cur_weight"=>"1.00", "cur_active"=>1, "created_at"=>"2017-06-10 21:50:15", "updated_at"=>"2017-06-10 21:50:15", "deleted_at"=>nil}
+    res = nil
+    CURRENCY.each do |currency_hash|
+      if currency_id == currency_hash.id
+        return currency_hash
+      end
+    end
+    return res
+
+  end
+
+  def send_more_actions_wallet(wallet_id)
+    elements = []
+    wallet_hash = get_wallet(wallet_id).result.last
+    wallet_id = wallet_hash.wallet_id
+      
+      buttons = []
+      
+      buttons << {
+        title: "Update",
+        type: "postback",
+        payload: "update_wallet:#{wallet_id}"
+      }
+      buttons << {
+        title: "Delete",
+        type: "postback",
+        payload: "delete_wallet:#{wallet_id}"
+      }
+      activation_title = wallet_hash.wallet_active == 1 ? "Deactivate" : "Activate"
+      activation_payload = wallet_hash.wallet_active == 1 ? "deactivate_wallet" : "activate_wallet"
+      buttons << {
+        title: activation_title,
+        type: "postback",
+        payload: "#{activation_payload}:#{wallet_id}"
+      }
+      elements << {
+        title: wallet_title(wallet_hash),
+        subtitle: wallet_subtitle(wallet_hash),
+        buttons: buttons
+      }
+      send_generic(elements)  
+  end
+
+  def wallet_title(wallet_hash)
+    currency = get_currency(wallet_hash.wallet_currency_id)
+    "#{wallet_hash.wallet_name}#{"(Primary)" if (wallet_hash.wallet_primary == 1)} - #{currency.cur_symbol} #{wallet_hash.wallet_balance}"
+  end
+
+  def wallet_subtitle(wallet_hash)
+    res = wallet_hash.wallet_note
+    return res
+  end
+
+  def send_wallets
+    elements = []
+    wallets = get_wallets.result.last.data
+    wallets.each do |wallet_hash|
+      # {"wallet_id"=>62, "wallet_currency_id"=>1, "wallet_type_id"=>1, "wallet_category_id"=>2, "wallet_name"=>nil, "wallet_note"=>nil, "wallet_active"=>1, "wallet_balance"=>"6.00", "created_at"=>"2017-06-29 10:24:12", "updated_at"=>"2017-06-29 12:48:42", "deleted_at"=>nil, "wallet_user_id"=>"425", "wallet_primary"=>0}
+      wallet_id = wallet_hash.wallet_id
+      currency = get_currency(wallet_hash.wallet_currency_id)
+      
+      buttons = []
+      
+      buttons << {
+        title: "Transfer",
+        type: "postback",
+        payload: "wallet_transfer:#{wallet_id}"
+      }
+      buttons << {
+        title: "Add money",
+        type: "postback",
+        payload: "add_money:#{wallet_id}"
+      }
+      buttons << {
+        title: "More actions",
+        type: "postback",
+        payload: "more_wallet_actions:#{wallet_id}"
+      }
+      elements << {
+        title: wallet_title(wallet_hash),
+        subtitle: wallet_subtitle(wallet_hash),
+        buttons: buttons
+      }
+    end
+    send_generic(elements)
+  end
+
+  def send_generic(elements)
+    puts elements
+    this_times = (elements.count/10.0).ceil
+    this_times.times do |i|
+      send_message(
+        "attachment": 
+        {
+          "type": "template",
+          "payload": {
+            "template_type": "generic",
+            "elements": elements[i*10..(i*10)+9]
+          }
+        })
+    end
+  end
 
   SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=home_country"
   # STATE = {0 => "ask_for_role", 1 => "ask_for_business", 2 => "ask_for_location", }
@@ -318,17 +432,19 @@ class User < ActiveRecord::Base
       update_attributes(role: "customer", state: "state_ask_for_login")
       postback.reply(text: I18n.t('signed_up_as_customer'))
       # ask_for_location(message)
-      ask_for_login(message)
+      ask_for_login
     elsif payload == "continue_business_owner"
       update_attributes(role: "business", state: "state_ask_for_login")
       postback.reply(text: I18n.t('signed_up_as_business'))
-      ask_for_login(message)
+      ask_for_login
       # ask_for_business(message)
     # end
     elsif payload == "more_settings"
       send_more_settings(message)
     elsif payload == "GET_STARTED_PAYLOAD"
       send_select_language(message)
+    elsif payload == "view_wallets"
+      send_wallets
     elsif payload == "set_hindi"
       update_attributes(lang: "hi", state: "state_send_welcome_message")
       send_welcome_message(message)
@@ -402,6 +518,35 @@ class User < ActiveRecord::Base
       order_id = payload.split(":").last
       category_id = payload.split(":")[-2]
       send_items_to_user(message, order_id, category_id)
+    elsif payload.include?("view_wallets")
+      send_wallets
+    elsif payload.include?("update_wallet")
+      wallet_id = payload.split(":").last
+      # send_update_wallet
+    elsif payload.include?("delete_wallet")
+      wallet_id = payload.split(":").last
+      delete_wallet(wallet_id)
+      send_message(text: "Wallet deleted")
+    elsif payload.include?("activate_wallet")
+      wallet_id = payload.split(":").last
+      activate_wallet(wallet_id)
+      send_message(text: "Wallet activated")
+    elsif payload.include?("deactivate_wallet")
+      wallet_id = payload.split(":").last
+      deactivate_wallet(wallet_id)
+      send_message(text: "Wallet deactivated")
+    elsif payload.include?("wallet_transfer")
+      wallet_id = payload.split(":").last
+      send_message(text: "Enter wallet id and amount space seperated \nExample: 65 12.50")
+      update_attributes(state: "state_get_transfer_details", wallet_from: wallet_id)
+    elsif payload.include?("add_money")
+      wallet_id = payload.split(":").last
+      send_message(text: "Enter amount  \nExample: 12.50")
+      update_attributes(state: "state_add_money_details", wallet_from: wallet_id)
+      # super hack
+    elsif payload.include?("more_wallet_actions")
+      wallet_id = payload.split(":").last
+      send_more_actions_wallet(wallet_id)
     end
   end
 
@@ -520,6 +665,11 @@ class User < ActiveRecord::Base
       message.reply(text: I18n.t("update_phone_success", phone: message.text))
     when "state_done"
       after_onboarding(message)
+    when "state_get_transfer_details"
+      to_id, amount = message.text.split(" ")
+      wallet_transfer(wallet_from, to_id, amount)
+      send_message(text: "Money transferred!")
+      update_attributes(state: "state_done")
     when "state_ask_for_order"
       # query = message.text
       if message.text.size > 2
