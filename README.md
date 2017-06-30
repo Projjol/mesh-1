@@ -1,6 +1,6 @@
 Full Demo: https://www.youtube.com/playlist?list=PLQcGlLJQrlIDnTEr0Ib3yXLJn9XU5EVum
 
-#Pitch:
+#Pitch
 Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries, houses on rent OR You can sign up as one of them and let your clients discover you.
 
 #What it does:
