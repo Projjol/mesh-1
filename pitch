@@ -2,10 +2,8 @@
 Pitch:
 Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries, houses on rent OR You can sign up as one of them and let your clients discover you.
 
-
-
-What it does
-Consider Mesh as bridge between you and local businesses or vice-versa. It leverage various chatbot platforms to connect both. Anything from booking cab, renting a house, buying grocery, getting home services, finding nearby professional, you can do it through Mesh
+What it does:
+Consider Mesh as bridge between you and local businesses. It leverage various chatbot platforms to connect both. Anything from booking cab, renting a house, buying grocery, getting home services, finding nearby professional, you can do it through Mesh
 
 Major Features:
 
@@ -14,7 +12,6 @@ Major Features:
 3. Keep Context between various platform.
 4. Easy send money to your friends/family.
 5. Multilingual - I18n is supported and can scale through any number of languages
-6. Proxy Bot
 
 Other Feature: 
 
@@ -44,6 +41,137 @@ NLP can be the next step. Bots should be able to understand in natural language 
 
 ===============================================================
 
+implement sso
+  if time register
+wallet
+  handle foreign exchange
+  - actions
+    transfter
+    add money
+    update(make primary)
+    delete
+    deactivate/activate
+    show messages from server
+
+working professional
+business image
+taxi drivers
+proxy bot for chatting
+slack
+telegram(figute location ?)
+how about youtube playlist?
+request money: mindblowing idea
+
+===========
+Bugs found in apis
+===========
+wallet balance bug
+wthout -H contenttype it breaks
+// in urls
+===========
+
+sign up as entepreneur
+  kind of business
+  ask phone number
+  allow users to get phone number?
+  do you deliver
+  upload photo of items
+  if restaurant enter menu
+  do you take pre order
+  user management
+
+sign up as user
+  what do you want
+  cancel order
+  recuring orders
+  get direction
+  call business
+  order online
+  
+
+
+=======================
+Features
+  multi lingo
+  set location radius
+  pre order
+  reminders
+  wallet
+  dynamic update stock
+  ratings?
+  image?  
+  
+
+  sms alerts(no time)
+
+
+Heroku Setup
+  Grocery.create_groceries
+
+  Taxi drives
+    10.times do |i|
+      name = "Cab #{i}"
+      cols = ["Green", "Red", "Yellow"]
+      cars = ["Acura","Alfa Romeo","Aston Martin","Audi","Bentley","BMW","Bugatti","Buick"]
+      car_details = cols.sample + " " + cars.sample
+      json = {
+          "first_name": name,
+          "last_name": "",
+          "json_store": {
+            "state": "state_done",
+            "lang": "en",
+            "latlong": [Random.rand(90), Random.rand(180)],
+            "display_name": name,
+            "car_no": "MH #{Random.rand(9999) }",
+            "car_details": car_details,
+            "phone": "#{Random.rand(10**10)}",
+          },
+          "role": "business",
+          "fb_id": "A144697749532#{Random.rand(1000)}"
+          }
+      User.create(json)
+    end
+
+
+  Dummy Business account
+    data = {"Kash Karry Supermarket"=>[19.112944000000002, 72.87617999999999], "NEW MY CHOICE SUPER MARKET"=>[19.112944000000002, 72.87617999999999], "AaramShop C/o Nav Durga Super Market"=>[19.112944000000002, 72.87617999999999], "G-mart"=>[19.111864, 72.87902799999999], "Tanvi Super Market"=>[19.115023, 72.8590169], "AaramShop C/o Vardhman Store"=>[19.111864, 72.87902799999999], "Lucky super market"=>[19.115023, 72.8590169], "Super Janta Store"=>[19.115023, 72.8590169], "AaramShop C/o Rajesh Super Market"=>[19.1175915, 72.8836753], "Hari Om Super Market"=>[19.1175915, 72.8836753], "Patel genral store"=>[19.1175915, 72.8836753], "Sangam Store"=>[19.1061813, 72.8665255], "Prabhat Super Market"=>[19.1061813, 72.8665255], "AaramShop C/o Hi Mart"=>[19.1061813, 72.8665255], "Parth General Store"=>[19.1182016, 72.8852842], "AaramShop C/o Vimal Provision Stores"=>[19.1182016, 72.8852842], "Mangalore Stores"=>[19.1182016, 72.8852842], "L.R. General Stores"=>[19.120535, 72.8851289], "Kirana Market"=>[19.1176639, 72.85250789999999]}
+    data.each do |name, latlong|
+      json = {
+      "first_name": "Ownder of " + name,
+      "last_name": "",
+      "json_store": {
+        "state": "state_done",
+        "lang": "en",
+        "latlong": latlong,
+        "display_name": name,
+        "delivery": Random.rand(2) == false,
+        "phone": "#{Random.rand(10**10)}",
+        "delivery_distance": "#{Random.rand(10)}"
+      },
+      "role": "business",
+      "fb_id": "A144697749532#{Random.rand(1000)}"
+      }
+      User.create(json)
+    end
+
+  Generate mappings
+    count = Grocery.top_categories.count
+    User.all.each do |user|
+      gs = Grocery.top_categories.order("Random()").limit(Random.rand(count))
+      gs.each do |g|
+        UserGroceryMapping.create(user_id: user.id, grocery_id: g.id)
+      end
+    end
+    
+order flow
+  1. search for item
+  2. get list of stores
+  3. choose store
+  4. ask if more items
+  5. if no, place order
+  6. if yes, show all items from store
+
+===============================================================
 Judging criteria
 
 Social Impact (25%) 

@@ -1,129 +1,49 @@
-implement sso
-  if time register
-wallet
-  handle foreign exchange
-  - actions
-    transfter
-    add money
-    update(make primary)
-    delete
-    deactivate/activate
-    show messages from server
+Full Demo: https://www.youtube.com/playlist?list=PLQcGlLJQrlIDnTEr0Ib3yXLJn9XU5EVum
 
-working professional
-business image
-taxi drivers
-proxy bot for chatting
-slack
-telegram(figute location ?)
-how about youtube playlist?
-request money: mindblowing idea
+#Pitch:
+Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries, houses on rent OR You can sign up as one of them and let your clients discover you.
 
-===========
-Bugs found in apis
-===========
-wallet balance bug
-wthout -H contenttype it breaks
-// in urls
-===========
+#What it does:
+Consider Mesh as bridge between you and local businesses. It leverage various chatbot platforms to connect both. Anything from booking cab, renting a house, buying grocery, getting home services, finding nearby professional, you can do it through Mesh
 
-sign up as entepreneur
-  kind of business
-  ask phone number
-  allow users to get phone number?
-  do you deliver
-  upload photo of items
-  if restaurant enter menu
-  do you take pre order
-  user management
+#Major Features:
 
-sign up as user
-  what do you want
-  cancel order
-  recuring orders
-  get direction
-  call business
-  order online
-  
+1. Complete control over your Digitaltown wallet.(Transfer money between wallets, actions like delete/update/deactivate) It consumes almost all Digitaltown Wallet APIs 
+2. Onboarding Process if you signup as Business. In case of drivers, Platform would take details like car license number, addtional car details. In case of renting house, it will ask for house photos, amenities etc. For store owners, it will ask all items which sell by them, whether they do delivery or not etc.
+3. Keep Context between various platform. For example: You are interacting with chatbot on deskop through FB Messenger, you leave conversation midway and go to Telegram on your mobile. You wont have to start conversation again! Bot will keep context of last conversation. This is possible because of Digitaltown SSO 
+4. Easy send money to your friends/family. They just have to mention email address and amount. You can just type "Send money"/"Receive money", send email, amount and you are done!   
+5. Multilingual - I18n is supported and can scale through any number of languages
+
+#Other Feature: 
+
+1. Supports Facebook Messagers persistent-menu for additional actions
+2. Easy configuration when adding new business/services/professions/grocery items etc.
+3. Call button incase user wants to connect
+4. Supports webview on all platforms. It provides best in-app experience while being redirect to external services (Very much useful when authorizing for Digitaltown SSO)
+5. Uses location to discover nearby stores/businesses
+6. Easily Scalable
+
+#Where Idea came from:
+I moved to new area recently in the same city(Mumbai). One of the problem me and my family facing was finding local vendor/store for things like household items, grocery, home services etc. Google wouldn't return much answers when it comes to small stores like dairy, general stores and home services. Ordering online won't work when you need any item immediately, espacially in developing countries like India where people not much active online expect messenger services like Facebook Messenger, Telegram etc. For any small businesses/stores it is difficult to build their own platform where they can receive orders online, discover clients easily or receive/send payments. Bot platform can be answer to those questions and With advantage of DigitalTown platform, Using its SSO and Wallet API it will be very simple to solve those problems. 
+
+#How it can impact society:
+User acquisition is very fast when it comes to bot platform. It will move trend towards local businesses when it comes to Online experience, also it's completely free to use and open sourced, which will shift power from big cos like Amazon, Uber, Airbnb and other similar giants to local vendors. This will every city self contained and its win-win for all.
+
+#How I built it
+I wrote down all the major features, user flows, ideas I had in my mind.
 
 
-=======================
-Features
-  multi lingo
-  set location radius
-  pre order
-  reminders
-  wallet
-  dynamic update stock
-  ratings?
-  image?  
-  
+#Challenges I ran into
+Data modelling was quite complicated. Setting up bot, webhooks took much of my time. Also Desiging architecture which supports multiple bot platforms
 
-  sms alerts(no time)
+#Accomplishments that I'm proud of
+Being able to implement features/ideas I had
 
+#What I learned
+This is by far best project I have worked on. It involved web server, bot apis and talking to Digitaltown's services. I implemented SSO for the first time so that was major area where I learned alot
 
-Heroku Setup
-  Grocery.create_groceries
+#What's next
 
-  Taxi drives
-    10.times do |i|
-      name = "Cab #{i}"
-      cols = ["Green", "Red", "Yellow"]
-      cars = ["Acura","Alfa Romeo","Aston Martin","Audi","Bentley","BMW","Bugatti","Buick"]
-      car_details = cols.sample + " " + cars.sample
-      json = {
-          "first_name": name,
-          "last_name": "",
-          "json_store": {
-            "state": "state_done",
-            "lang": "en",
-            "latlong": [Random.rand(90), Random.rand(180)],
-            "display_name": name,
-            "car_no": "MH #{Random.rand(9999) }",
-            "car_details": car_details,
-            "phone": "#{Random.rand(10**10)}",
-          },
-          "role": "business",
-          "fb_id": "A144697749532#{Random.rand(1000)}"
-          }
-      User.create(json)
-    end
-
-
-  Dummy Business account
-    data = {"Kash Karry Supermarket"=>[19.112944000000002, 72.87617999999999], "NEW MY CHOICE SUPER MARKET"=>[19.112944000000002, 72.87617999999999], "AaramShop C/o Nav Durga Super Market"=>[19.112944000000002, 72.87617999999999], "G-mart"=>[19.111864, 72.87902799999999], "Tanvi Super Market"=>[19.115023, 72.8590169], "AaramShop C/o Vardhman Store"=>[19.111864, 72.87902799999999], "Lucky super market"=>[19.115023, 72.8590169], "Super Janta Store"=>[19.115023, 72.8590169], "AaramShop C/o Rajesh Super Market"=>[19.1175915, 72.8836753], "Hari Om Super Market"=>[19.1175915, 72.8836753], "Patel genral store"=>[19.1175915, 72.8836753], "Sangam Store"=>[19.1061813, 72.8665255], "Prabhat Super Market"=>[19.1061813, 72.8665255], "AaramShop C/o Hi Mart"=>[19.1061813, 72.8665255], "Parth General Store"=>[19.1182016, 72.8852842], "AaramShop C/o Vimal Provision Stores"=>[19.1182016, 72.8852842], "Mangalore Stores"=>[19.1182016, 72.8852842], "L.R. General Stores"=>[19.120535, 72.8851289], "Kirana Market"=>[19.1176639, 72.85250789999999]}
-    data.each do |name, latlong|
-      json = {
-      "first_name": "Ownder of " + name,
-      "last_name": "",
-      "json_store": {
-        "state": "state_done",
-        "lang": "en",
-        "latlong": latlong,
-        "display_name": name,
-        "delivery": Random.rand(2) == false,
-        "phone": "#{Random.rand(10**10)}",
-        "delivery_distance": "#{Random.rand(10)}"
-      },
-      "role": "business",
-      "fb_id": "A144697749532#{Random.rand(1000)}"
-      }
-      User.create(json)
-    end
-
-  Generate mappings
-    count = Grocery.top_categories.count
-    User.all.each do |user|
-      gs = Grocery.top_categories.order("Random()").limit(Random.rand(count))
-      gs.each do |g|
-        UserGroceryMapping.create(user_id: user.id, grocery_id: g.id)
-      end
-    end
-    
-order flow
-  1. search for item
-  2. get list of stores
-  3. choose store
-  4. ask if more items
-  5. if no, place order
-  6. if yes, show all items from store
+NLP can be the next step. Bots should be able to understand in natural language while onboarding or while talking to users (Most of flows are call-to-action based). 
+One good feature will be Proxy messaging where you can chat with other through Mesh - instead of directly sharing number. This will be for professionals which are on platform without loosing privacy.
+Feature are very basic, I would say what I have implemented is 0.01% of what it can be so theres alot of work to do :)

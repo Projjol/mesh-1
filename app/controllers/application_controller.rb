@@ -32,7 +32,7 @@ class ApplicationController < ActionController::Base
   def incoming_digitaltown
     user = User.find(session["user_id"])
     user.initiate_sso(params[:code])
-    render html: "mama"
+    render html: "<img src=\"/success.png\"> </image>".html_safe
   end
 
   def incoming_slack

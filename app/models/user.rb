@@ -493,7 +493,7 @@ def send_list(elements, buttons)
     end
   end
 
-  SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=home_country"
+  SSO_URL = "https://v1-sso-api.digitaltown.com/oauth/authorize?client_id=#{ENV['DT_CLIENT_ID']}&redirect_uri=#{ENV['HOST']}/incoming_digitaltown&response_type=code&scope=email"
   # STATE = {0 => "ask_for_role", 1 => "ask_for_business", 2 => "ask_for_location", }
   # STATES = [ask_for_lang, ask_for_role, send_welcome_message, ask_for_business, ]
   def on_postback(postback)
