@@ -46,7 +46,7 @@ class User < ActiveRecord::Base
   def initiate_sso(code)
     s = "curl --request POST \
   --url https://api.digitaltown.com/sso/token \
-  --data '{\"grant_type\":\"authorization_code\",\"client_id\":\"#{ENV["DT_CLIENT_ID"]}\",\"client_secret\":\"#{ENV["DT_CLIENT_SECRET"]}\",\"code\":\"#{code}\",\"redirect_uri\":\"https://9df52743.ngrok.io/incoming_digitaltown\"}' -H 'content-type: application/json'"
+  --data '{\"grant_type\":\"authorization_code\",\"client_id\":\"#{ENV["DT_CLIENT_ID"]}\",\"client_secret\":\"#{ENV["DT_CLIENT_SECRET"]}\",\"code\":\"#{code}\",\"redirect_uri\":\"https://#{ENV["HOST"]}/incoming_digitaltown\"}' -H 'content-type: application/json'"
   puts "="*100
   puts s
     res = `#{s}`
