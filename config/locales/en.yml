@@ -21,11 +21,11 @@
 
 en:
   hello: "Hey %{name}, Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries.."
-  greeting_text: "Discover nearby grocery and household essentials stores"
-  continue_business_owner: "Store owner"
+  greeting_text: "Dicover local businesses, anything from home services, professinals, taxi drivers, groceries.."
+  continue_business_owner: "Entrepreneur/Professinals/Business"
   continue_customer: "Customer"
   signed_up_as_customer: "You have signed up as Customer"
-  signed_up_as_business: "You have signed up as Store"
+  signed_up_as_business: "You have signed up as Entrepreneur/Professinals/Business"
   select: "Select"
   remove: "Remove"
   show_items: "Show items"

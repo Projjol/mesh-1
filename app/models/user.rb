@@ -1,5 +1,5 @@
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
   def self.create_from_message(message)
@@ -25,6 +25,10 @@ class User < ActiveRecord::Base
     update_attributes(auth: JSON.parse(res))
     update_attributes(sso_details: get_details_from_digitaltown)
     send_message(text: "You are successfully logged in.")
+    if role == "business"
+      Business.ask_for_business(self)
+    else
+    end
   end
 
   def self.curl(s)
@@ -251,6 +255,54 @@ class User < ActiveRecord::Base
         buttons_ = buttons
       end
       message.reply(
+      "attachment": 
+      {
+        "type": "template",
+        "payload": {
+          "template_type": "list",
+          "top_element_style": "compact",
+          "elements": elements[i..j-1],
+          "buttons": buttons_
+        }
+      })
+      i = j
+    end
+  end
+def send_list(elements, buttons)
+    # message.reply(
+    #   "attachment": 
+    #   {
+    #     "type": "template",
+    #     "payload": {
+    #       "template_type": "list",
+    #       "top_element_style": "compact",
+    #       "elements": elements[0..3],
+    #       "buttons": buttons
+    #     }
+    # })   
+    if elements.count == 1
+      elements[0][:buttons] += buttons if !buttons.blank?
+      message.reply(
+      "attachment": 
+      {
+        "type": "template",
+        "payload": {
+          "template_type": "generic",
+          "elements": elements
+        }
+      })
+      return 
+    end
+    i = 0
+    group = User.create_group(elements.count)
+    group.each_with_index do |count, index|
+      j = i + count
+      if index != (group.count - 1)
+        buttons_ = []
+      else
+        buttons_ = buttons
+      end
+      send_message(
       "attachment": 
       {
         "type": "template",
@@ -539,6 +591,18 @@ class User < ActiveRecord::Base
       wallet_id = payload.split(":").last
       send_message(text: "Enter wallet id and amount space seperated \nExample: 65 12.50")
       update_attributes(state: "state_get_transfer_details", wallet_from: wallet_id)
+    elsif payload.include?("select_type_of_profession")
+      prof_index = payload.split(":").last
+      if role == "business"
+        update_attributes(profession: prof_index, state: "state_get_phone")
+        send_message(text: "Your profession has been updated. Please send us your phone number so you clients can reach out to you")
+      else
+        Business.send_nearby_professional(self, prof_index)
+      end
+    elsif payload.include?("set_type_of_business")
+      business_id = payload.split(":").last
+      update_attributes(type_of_business: business_id)
+      Business.ask_for_business_details(self)
     elsif payload.include?("add_money")
       wallet_id = payload.split(":").last
       send_message(text: "Enter amount  \nExample: 12.50")
@@ -639,13 +703,17 @@ class User < ActiveRecord::Base
     if !message.location_coordinates.blank?
       message.reply(text: I18n.t("location_updated"))
       update_attribute(:latlong, message.location_coordinates)
-      message.reply(text: I18n.t("enter_search"))
+      # message.reply(text: I18n.t("enter_search"))
+      
       return
     end
     if !message.quick_reply.blank?
       handle_quick_replies(message)
       puts "wo"
       return
+    end
+    if message.text.to_s.downcase.include?("update location")
+      ask_for_location
     end
     if self.state.blank?
       self.state = "state_ask_for_lang"
@@ -656,7 +724,21 @@ class User < ActiveRecord::Base
     when "state_send_welcome_message"
       send_welcome_message(message)
     when "state_ask_for_business"
-      ask_for_business(message)
+      Business.ask_for_business(self, message)
+    when "state_get_house_img"
+      res = []
+      message.attachments.each do |a|
+        res << a.payload.url
+      end
+      update_attributes(house_images: res)
+      ask_for_location
+    when "state_get_car_details"
+      update_attributes(car_details: message.text, state: "state_done")
+      send_message(text: "Car details has been updated! You can now update your location from menu or simple type update location for getting nearby customers")
+      ask_for_location
+    when "state_get_car_no"
+      update_attributes(car_no: message.text, state: "state_get_car_details")
+      send_message(text: "Your car number is updated! Please give us brief discription about you car. It will help customers finding one")
     when "state_get_name"
       update_attributes(display_name: message.text, state: "state_done")
       message.reply(text: I18n.t("update_name_success", name: message.text))
@@ -684,10 +766,10 @@ class User < ActiveRecord::Base
     end
   end
 
-  def ask_for_business(message)
+  def ask_for_groceries
     # Grocery.send_select_list(message, 1)
-    message.reply(text: I18n.t("select_grocery"))
-    send_select_list_categories(message, 0)
+    send_message(text: I18n.t("select_grocery"))
+    send_select_list_categories(nil, 0)
   end
 
   def after_onboarding(message)
@@ -742,12 +824,12 @@ class User < ActiveRecord::Base
       elements << element
     end
     if !elements.blank?
-      User.send_list(message, elements, buttons)
+      send_list(elements, buttons)
     end
   end
 
-  def ask_for_location(message)
-    message.reply("text": "Please share your location:",
+  def ask_for_location(message = nil)
+    send_message("text": "Please share your location:",
         "quick_replies":[
           {
             "content_type": "location",
