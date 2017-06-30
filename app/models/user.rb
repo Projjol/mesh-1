@@ -23,7 +23,7 @@ class User < ActiveRecord::Base
   puts s
     res = `#{s}`
     update_attributes(auth: JSON.parse(res))
-    update_attributes(sso_details: get_details_from_digitaltown)
+    update_attributes(sso_details: get_details_from_digitaltown, state: "state_done")
     send_message(text: "You are successfully logged in.")
     if role == "business"
       Business.ask_for_business(self)
@@ -699,6 +699,10 @@ def send_list(elements, buttons)
     end
   end
 
+  def business?
+    role == "business"
+  end
+
   def start_flow(message)
     if !message.location_coordinates.blank?
       message.reply(text: I18n.t("location_updated"))
@@ -760,6 +764,7 @@ def send_list(elements, buttons)
       else
         message.reply(text: I18n.t("enter_minimum_3", query: message.text))
       end
+      update_attributes(state: "state_done")
     else
       send_select_language(message)
       # send_welcome_message(message)
@@ -774,7 +779,8 @@ def send_list(elements, buttons)
 
   def after_onboarding(message)
     # message.reply(text: "Onboarded")
-    send_more_settings(message)
+    # send_more_settings(message)
+    Business.ask_for_business(self)
   end
 
   def send_select_list_categories(message, page)

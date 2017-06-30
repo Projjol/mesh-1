@@ -6,7 +6,7 @@ class Business
 {"customer_title" => "I want home services",  "id" => "housejoykiller", "subtitle" => "housejoykiller", "title" => "I provide Home services"}, 
 {"customer_title" => "I want some groceries and household items",  "id" => "store", "subtitle" => "store", "title" => "I own a store"}
 ]
-  
+  TYPE_OF_HOME_SERVICES = ["Home Cleaning", "Pest Control", "Appliances", "Plumbing", "Electrical", "Carpentry", "Laundry", "Cars & Bikes", "Computer Repair", "Painting", "Movers and Packers"]
   TYPE_OF_PROFFESSIONS = ["Accountant", "Actuary", "Architect", "Dentist", "Engineer", "Evaluator", "Financial Planner", "Investment manager", "IT consultant", "Lawyer", "Management consultant", "Pharmacist", "Physician", "Registered nurse"]
 
   def self.ask_for_business(user)
@@ -38,16 +38,31 @@ class Business
   def self.ask_for_business_details(user)
     case user.type_of_business
     when "store"
-      user.ask_for_groceries
+      if user.business?
+        user.ask_for_groceries
+      else
+        user.send_message(text: I18n.t("enter_search"))
+        user.update_attributes(state: "state_ask_for_order")
+      end
     when "uberkiller"
-      user.send_message(text: "What is your car license number")
-      user.update_attributes(state: "state_get_car_no")
+      if user.business?
+        user.send_message(text: "What is your car license number")
+        user.update_attributes(state: "state_get_car_no")
+      else
+        send_nearby_drivers(user)
+      end
     when "airbnbkiller"
       user.send_message(text: "Please send images of your house")
       user.update_attributes(state: "state_get_house_img")
     when "professional_services"
       send_prof_list(user)
+    when "housejoykiller"
+      send_home_services_list(user)
     end
+    
+  end
+
+  def self.send_nearby_drivers(user)
     
   end
 
@@ -59,6 +74,26 @@ class Business
             "title": "Select",
             "type": "postback",
             "payload": "select_type_of_profession:#{index}"
+          }
+        ]
+      element = {
+        "title": name,
+        "subtitle": "",
+        "buttons": element_buttons
+      }
+      elements << element
+    end
+    user.send_list(elements, [])
+  end
+
+  def self.send_home_services_list(user)
+    elements = []
+    TYPE_OF_HOME_SERVICES.each_with_index do |name, index|
+      element_buttons = [
+          {
+            "title": "Select",
+            "type": "postback",
+            "payload": "select_type_of_home_service:#{index}"
           }
         ]
       element = {
