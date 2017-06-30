@@ -1,5 +1,6 @@
+require 'telegram/bot'
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession, :house_details, :email
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession, :house_details, :email, :telegram_username, :current_bot
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
   scope :business, -> {where(role: "business")}
@@ -17,6 +18,15 @@ class User < ActiveRecord::Base
     user.send_select_language(message)
   end
 
+  def self.create_from_message_telegram(chat_id)
+    user = User.create(telegram_id: chat_id, state: "state_ask_for_lang")
+    user.current_bot = "telegram"
+    # user.send_welcome_message(message)
+    user.send_select_language
+  end
+
+  TELEGRAM_URL = "https://api.telegram.org/#{ENV["TELEGRAM_TOKEN"]}/"
+
   def self.find_by_email(email)
     User.where("(json_store ->> 'email') = ?", email).last
   end
@@ -25,7 +35,13 @@ class User < ActiveRecord::Base
 
   def init
     self.latlong = [0,0] if latlong.blank?
+    @telegram_client = Telegram::Bot::Client.new(ENV["TELEGRAM_TOKEN"])
   end
+
+  def send_telegram_buttons(chat_id)
+    @telegram_client.send_message chat_id: chat_id, text: 'Test', reply_markup: {inline_keyboard: [[{text: "Chus", url: "http://google.com"}]]}
+  end
+
 
   def initiate_sso(code)
     s = "curl --request POST \
@@ -36,10 +52,16 @@ class User < ActiveRecord::Base
     res = `#{s}`
     update_attributes(auth: JSON.parse(res))
     sso_details = get_details_from_digitaltown
-    update_attributes(sso_details: sso_details, state: "state_done", first_name: sso_details["first_name"], last_name: sso_details["last_name"], email: sso_details["email"])
-    send_message(text: "You are successfully logged in.")
+    email = sso_details["email"]
+    user = User.find_by_email(email)
+    if user.blank?
+      user = self
+    end
+
+    user.update_attributes(sso_details: sso_details, state: "state_done", first_name: sso_details["first_name"], last_name: sso_details["last_name"], email: sso_details["email"], auth: JSON.parse(res))
+    user.send_message(text: "You are successfully logged in.")
     if role == "business"
-      Business.ask_for_business(self)
+      Business.ask_for_business(user)
     else
     end
   end
@@ -151,9 +173,9 @@ class User < ActiveRecord::Base
     !!delivery
   end
 
-  def send_select_language(message)
+  def send_select_language(message = nil)
     buttons = {"set_english" => I18n.t('english'),  "set_hindi" => I18n.t('hindi')}
-    send_buttons(message, I18n.t('select_language'), buttons)
+    send_buttons(nil, I18n.t('select_language'), buttons)
   end
 
   def get_fb_profile
@@ -234,20 +256,10 @@ class User < ActiveRecord::Base
   end
 
   def self.send_list(message, elements, buttons)
-    # message.reply(
-    #   "attachment": 
-    #   {
-    #     "type": "template",
-    #     "payload": {
-    #       "template_type": "list",
-    #       "top_element_style": "compact",
-    #       "elements": elements[0..3],
-    #       "buttons": buttons
-    #     }
-    # })   
+    
     if elements.count == 1
       elements[0][:buttons] += buttons if !buttons.blank?
-      message.reply(
+      send_message(
       "attachment": 
       {
         "type": "template",
@@ -267,7 +279,7 @@ class User < ActiveRecord::Base
       else
         buttons_ = buttons
       end
-      message.reply(
+      send_message(
       "attachment": 
       {
         "type": "template",
@@ -282,20 +294,10 @@ class User < ActiveRecord::Base
     end
   end
 def send_list(elements, buttons)
-    # message.reply(
-    #   "attachment": 
-    #   {
-    #     "type": "template",
-    #     "payload": {
-    #       "template_type": "list",
-    #       "top_element_style": "compact",
-    #       "elements": elements[0..3],
-    #       "buttons": buttons
-    #     }
-    # })   
+    
     if elements.count == 1
       elements[0][:buttons] += buttons if !buttons.blank?
-      message.reply(
+      send_message(
       "attachment": 
       {
         "type": "template",
@@ -343,7 +345,7 @@ def send_list(elements, buttons)
     buttons_hash.each do |k,v|
       buttons << {type: 'postback', title: v, payload: k}
     end
-    message.reply(
+    send_message(
       attachment: {
        type: 'template',
         payload: {
@@ -356,7 +358,7 @@ def send_list(elements, buttons)
   end
 
   def send_welcome_message(message)
-    # message.reply(text: I18n.t('hello', name: first_name))
+    
     buttons = {"continue_business_owner" => I18n.t('continue_business_owner'),  "continue_customer" => I18n.t('continue_customer')}
     send_buttons(message, I18n.t('hello', name: first_name), buttons)
   end
@@ -520,12 +522,12 @@ def send_list(elements, buttons)
       ask_for_location(postback)  
     elsif payload == "disable_delivery"
       update_attribute(:delivery, false)
-      message.reply(text: I18n.t('disable_delivery_success'))
+      send_message(text: I18n.t('disable_delivery_success'))
     elsif payload == "update_name"
-      message.reply(text: I18n.t('update_name'))
+      send_message(text: I18n.t('update_name'))
       update_attributes(state: "state_get_name")
     elsif payload == "update_phone"
-      message.reply(text: I18n.t('update_phone'))
+      send_message(text: I18n.t('update_phone'))
       update_attributes(state: "state_get_phone")
     elsif payload.include?("view_order")
       Order.view_order(message)
@@ -537,23 +539,23 @@ def send_list(elements, buttons)
       update_attribute(:delivery, true)
       send_delivery_success(message)
     elsif payload.include?("list_categories")
-      send_select_list_categories(postback, payload.split(":").last.to_i)
+      send_select_list_categories(nil, payload.split(":").last.to_i)
     elsif payload.include?("remove_grocery")
       grocery_id = payload.split(":").last
       a = UserGroceryMapping.where(user_id: self.id, grocery_id: grocery_id)
       a.delete_all
-      message.reply(text: "#{Grocery.find(grocery_id).name} " + I18n.t("removed"))
+      send_message(text: "#{Grocery.find(grocery_id).name} " + I18n.t("removed"))
       update_attribute(:state, "state_done")
     elsif payload.include?("select_grocery")
       grocery_id = payload.split(":").last
       UserGroceryMapping.create(user_id: self.id, grocery_id: grocery_id)
-      message.reply(text: "#{Grocery.find(grocery_id).name} " + I18n.t("added"))
+      send_message(text: "#{Grocery.find(grocery_id).name} " + I18n.t("added"))
       update_attribute(:state, "state_done")
     elsif payload.include?("order_from_store_item")
       store_id = payload.split(":").last
       item_id = payload.split(":")[-2]
       order = self.orders.create(item_ids: [item_id], store_id: store_id)
-      message.reply(text: I18n.t("add_more_item", name: User.find(store_id).display_name), quick_replies: [
+      send_message(text: I18n.t("add_more_item", name: User.find(store_id).display_name), quick_replies: [
         {
           title: I18n.t("yes"),
           content_type: "text",
@@ -578,7 +580,7 @@ def send_list(elements, buttons)
     elsif payload.include?("set_delivery_distance")
       distance = payload.split(":").last
       update_attribute(:delivery_distance, distance)
-      message.reply(text: I18n.t('delivery_distance_success', distance: distance))
+      send_message(text: I18n.t('delivery_distance_success', distance: distance))
     elsif payload.include?("book_cab")
       driver_id = payload.split(":").last
       #todo craete this function
@@ -641,14 +643,14 @@ def send_list(elements, buttons)
 
   def send_items_to_user(message, order_id, category_id)
     category = Grocery.find(category_id)
-    message.reply(text: I18n.t("more_items_from_store_in_category", category: category.name))
-    Grocery.send_store_items(message, category.children, order_id)
+    send_message(text: I18n.t("more_items_from_store_in_category", category: category.name))
+    Grocery.send_store_items(message, category.children, order_id, self)
   end
 
   def send_categories_to_user(message, order_id)
     current_store_categories = groceries.top_categories
-    message.reply(text: I18n.t("more_items_from_store_select_category", name: display_name))
-    Grocery.send_store_categories(message, current_store_categories, order_id)
+    send_message(text: I18n.t("more_items_from_store_select_category", name: display_name))
+    Grocery.send_store_categories(message, current_store_categories, order_id, self)
   end
 
   def name
@@ -670,19 +672,29 @@ def send_list(elements, buttons)
       title: "Anywhere in city",
       payload: "set_delivery_distance:any"
     }
-    message.reply(text: I18n.t('enable_delivery_success'))
-    message.reply(
+    send_message(text: I18n.t('enable_delivery_success'))
+    send_message(
         text: I18n.t('select_delivery_distance'),
         quick_replies: quick_replies
       )
   end
 
   def send_message(message)
-    payload = {
-            recipient: {id: fb_id},
-            message: message
-    }
-    Facebook::Messenger::Bot.deliver(payload, access_token: ENV['ACCESS_TOKEN'])
+    if current_bot.blank? || current_bot == "fb"
+      payload = {
+              recipient: {id: fb_id},
+              message: message
+      }
+      Facebook::Messenger::Bot.deliver(payload, access_token: ENV['ACCESS_TOKEN'])
+    else
+      text = message.text rescue nil
+      if !text.blank?
+        @telegram_client.send_message chat_id: telegram_id, text: text
+      else
+        @telegram_client.send_message chat_id: telegram_id, text: 'Test', reply_markup: {inline_keyboard: [[{text: "Chus", callback_data: "disable_delivery"}]]}
+      end
+    end
+
   end
 
   def send_more_settings(message)
@@ -715,7 +727,7 @@ def send_list(elements, buttons)
     if payload.include?("set_delivery_distance")
       distance = payload.split(":").last
       update_attribute(:delivery_distance, distance)
-      message.reply(text: I18n.t('delivery_distance_success', distance: distance))
+      send_message(text: I18n.t('delivery_distance_success', distance: distance))
     elsif payload.include?("order_from_store")
       store_id = payload.split(":").last
       order_id = payload.split(":")[-2]
@@ -743,9 +755,9 @@ def send_list(elements, buttons)
 
   def start_flow(message)
     if !message.location_coordinates.blank?
-      message.reply(text: I18n.t("location_updated"))
+      send_message(text: I18n.t("location_updated"))
       update_attribute(:latlong, message.location_coordinates)
-      # message.reply(text: I18n.t("enter_search"))
+      # send_message(text: I18n.t("enter_search"))
       
       return
     end
@@ -826,10 +838,10 @@ def send_list(elements, buttons)
       state_done
     when "state_get_name"
       update_attributes(display_name: message.text, state: "state_done")
-      message.reply(text: I18n.t("update_name_success", name: message.text))
+      send_message(text: I18n.t("update_name_success", name: message.text))
     when "state_get_phone"
       update_attributes(phone: message.text, state: "state_done")
-      message.reply(text: I18n.t("update_phone_success", phone: message.text))
+      send_message(text: I18n.t("update_phone_success", phone: message.text))
     when "state_done"
       after_onboarding(message)
     when "state_get_transfer_details"
@@ -841,10 +853,10 @@ def send_list(elements, buttons)
     when "state_ask_for_order"
       # query = message.text
       if message.text.size > 2
-        message.reply(text: I18n.t("searching_for", query: message.text))
-        Grocery.send_items(message)
+        send_message(text: I18n.t("searching_for", query: message.text))
+        Grocery.send_items(message, self)
       else
-        message.reply(text: I18n.t("enter_minimum_3", query: message.text))
+        send_message(text: I18n.t("enter_minimum_3", query: message.text))
       end
       update_attributes(state: "state_done")
     else
@@ -864,7 +876,7 @@ def send_list(elements, buttons)
   end
 
   def after_onboarding(message)
-    # message.reply(text: "Onboarded")
+    # send_message(text: "Onboarded")
     # send_more_settings(message)
     Business.ask_for_business(self)
   end

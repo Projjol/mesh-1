@@ -41,7 +41,7 @@ class Grocery < ApplicationRecord
     Grocery.where("name ilike ?", "%#{query}%")
   end
 
-  def self.send_items(message)
+  def self.send_items(message, current_user)
     query = message.text
     items = Grocery.search(query)
     elements = []
@@ -59,9 +59,9 @@ class Grocery < ApplicationRecord
       }
     end
     if elements.blank?
-      message.reply(text: I18n.t("no_items"))
+      current_user.send_message(text: I18n.t("no_items"))
     else
-      User.send_list(message, elements, [])
+      current_user.send_list(elements, [])
     end
   end
 
@@ -79,7 +79,7 @@ class Grocery < ApplicationRecord
     (self.id%10)*10
   end
 
-  def self.send_store_items(message, items, order_id)
+  def self.send_store_items(message, items, order_id, current_user)
     elements = []
     items.each do |item|
       buttons = []
@@ -104,10 +104,10 @@ class Grocery < ApplicationRecord
         buttons: buttons
       }
     end
-    Grocery.send_generic(message, elements)
+    current_user.send_generic(elements)
   end
 
-  def self.send_store_categories(message, items, order_id)
+  def self.send_store_categories(message, items, order_id, current_user)
     elements = []
     items.each do |item|
       buttons = []
@@ -122,7 +122,7 @@ class Grocery < ApplicationRecord
         buttons: buttons
       }
     end
-    Grocery.send_generic(message, elements)
+    current_user.send_generic(elements)
   end
 
   def cal_distance(loc1, loc2)
@@ -183,28 +183,28 @@ def self.cal_distance(loc1, loc2)
       }
     end
     if elements.blank?
-      message.reply(text: I18n.t("no_stores"))
+      current_user.send_message(text: I18n.t("no_stores"))
     else
-      message.reply(text: I18n.t("total_stores_found", count: elements.count))
-      Grocery.send_generic(message, elements)
+      current_user.send_message(text: I18n.t("total_stores_found", count: elements.count))
+      current_user.send_generic(elements)
     end
   end
 
-  def self.send_generic(message, elements)
-    puts elements
-    this_times = (elements.count/10.0).ceil
-    this_times.times do |i|
-      message.reply(
-        "attachment": 
-        {
-          "type": "template",
-          "payload": {
-            "template_type": "generic",
-            "elements": elements[i*10..(i*10)+9]
-          }
-        })
-    end
-  end
+  # def self.send_generic(message, elements)
+  #   puts elements
+  #   this_times = (elements.count/10.0).ceil
+  #   this_times.times do |i|
+  #     message.reply(
+  #       "attachment": 
+  #       {
+  #         "type": "template",
+  #         "payload": {
+  #           "template_type": "generic",
+  #           "elements": elements[i*10..(i*10)+9]
+  #         }
+  #       })
+  #   end
+  # end
 
 #   items = ["1","2","3","4", "5"]
 # elements = []

@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   get 'get_dt_oauth' => "application#get_dt_oauth"
   get 'incoming_digitaltown' => "application#incoming_digitaltown"
   post 'incoming_slack' => "application#incoming_slack"
+  post 'incoming_telegram' => "application#incoming_telegram"
   get 'incoming_digitaltown' => "application#incoming_digitaltown"
   mount Facebook::Messenger::Server, at: 'bot'
   # Example resource route with options:
