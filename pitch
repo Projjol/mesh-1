@@ -1,0 +1,71 @@
+======================================================================
+Pitch:
+Mesh helps you dicover local businesses, anything from home services, professinals, taxi drivers, groceries, houses on rent OR You can sign up as one of them and let your clients discover you.
+
+
+
+What it does
+Consider Mesh as bridge between you and local businesses or vice-versa. It leverage various chatbot platforms to connect both. Anything from booking cab, renting a house, buying grocery, getting home services, finding nearby professional, you can do it through Mesh
+
+Major Features:
+
+1. Complete control over your Digitaltown wallet.
+2. Onboarding Process if you signup as Business. 
+3. Keep Context between various platform.
+4. Easy send money to your friends/family.
+5. Multilingual - I18n is supported and can scale through any number of languages
+6. Proxy Bot
+
+Other Feature: 
+
+1. 
+
+Where Idea came from
+I moved to new area recently in the same city(Mumbai). One of the problem me and my family facing was finding local vendor/store for things like household items, grocery, home services etc. Google wouldn't return much answers when it comes to small stores like dairy, general stores and home services. Ordering online won't work when you need any item immediately, espacially in developing countries like India where people not much active online expect messenger services like Facebook Messenger, Telegram etc. For any small businesses/stores it is difficult to build their own platform where they can receive orders online, discover clients easily or receive/send payments. Bot platform can be answer to those questions and With advantage of DigitalTown platform, Using its SSO and Wallet API it will be very simple to solve those problems. 
+
+How it can impact society
+User acquisition is very fast when it comes to bot platform. It will move trend towards local businesses when it comes to Online experience, also it's completely free to use and open sourced, which will shift power from big cos like Amazon, Uber, Airbnb and other similar giants to local vendors. This will every city self contained and its win-win for all.
+
+How I built it
+I wrote down all the major features, user flows, ideas I had in my mind.
+
+
+Challenges I ran into
+Data modelling was quite complicated. Setting up bot, webhooks took much of my time. Also Desiging architecture which supports multiple bot platforms
+
+Accomplishments that I'm proud of
+Being able to implement features/ideas I had
+
+What I learned
+This is by far best project I have worked on. It involved web server, bot apis and talking to Digitaltown's services. I implemented SSO for the first time so that was major area where I learned alot
+
+What's next
+NLP can be the next step. Bots should be able to understand in natural language while onboarding or while talking to users (Most of flows are call-to-action based). Feature are very basic, I would say what I have implemented is 0.01% of what it can be so theres alot of work to do :)
+
+===============================================================
+
+Judging criteria
+
+Social Impact (25%) 
+General positive impact or in relationship to the city and community
+
+Creativity (25%)
+How innovative is this idea, and how did you come up with it?
+
+Scalability (20%)
+Does this product work when applied outside of a hackathon setting?
+
+Functionality (20%) Does this solution solve the problem it's intended for?
+
+Quality (10%)
+What is the overall quality of the solution?
+
+Your goal is to build something that has the potential to benefit cities, its people and communities - you decide what form that takes. Any technology solution is eligible
+build a site, mobile app, use hardware, anything your mind can think of
+The solution MUST include DigitalTown SmartWallet for authentication and user registration
+The solution should use DigitalTown SmartWallet if payments are involved
+The solution should be applicable to more than one City
+The solution should be scalable, capable of running in a cloud hosted environment
+Everyone is expected to follow the hack code of conduct https://hackcodeofconduct.org/
+
+

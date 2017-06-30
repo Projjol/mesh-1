@@ -1,7 +1,15 @@
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession, :house_details
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
+  scope :business, -> {where(role: "business")}
+  scope :stores, -> {business.where("(json_store ->> 'type_of_business') = ?", "store")}
+  scope :drivers, -> {business.where("(json_store ->> 'type_of_business') = ?", "uberkiller")}
+  scope :airbnbkillers, -> {business.where("(json_store ->> 'type_of_business') = ?", "airbnbkiller")}
+  scope :professional_services, -> {business.where("(json_store ->> 'type_of_business') = ?", "professional_services")}
+  scope :housejoykillers, -> {business.where("(json_store ->> 'type_of_business') = ?", "housejoykiller")}
+  # scope :drivers, -> {business.where("(json_store ->> 'type_of_business') = ?", "uberkiller")}
+
   def self.create_from_message(message)
     user = User.create(fb_id: message.sender['id'], state: "state_ask_for_lang")
     user.save_fb_profile
@@ -12,7 +20,7 @@ class User < ActiveRecord::Base
   after_initialize :init
 
   def init
-    self.latlong = [0,0] if !latlong.blank?
+    self.latlong = [0,0] if latlong.blank?
   end
 
   def initiate_sso(code)
@@ -566,6 +574,10 @@ def send_list(elements, buttons)
       distance = payload.split(":").last
       update_attribute(:delivery_distance, distance)
       message.reply(text: I18n.t('delivery_distance_success', distance: distance))
+    elsif payload.include?("book_cab")
+      driver_id = payload.split(":").last
+      #todo craete this function
+      # book_cab(driver_id)
     elsif payload.include?("selected_category")
       order_id = payload.split(":").last
       category_id = payload.split(":")[-2]
@@ -599,6 +611,14 @@ def send_list(elements, buttons)
       else
         Business.send_nearby_professional(self, prof_index)
       end
+    elsif payload.include?("select_type_of_home_service")
+      prof_index = payload.split(":").last
+      if role == "business"
+        update_attributes(home_service: prof_index, state: "state_get_phone")
+        send_message(text: "Your profession has been updated. Please send us your phone number so you clients can reach out to you")
+      else
+        Business.send_nearby_home_services(self, prof_index)
+      end
     elsif payload.include?("set_type_of_business")
       business_id = payload.split(":").last
       update_attributes(type_of_business: business_id)
@@ -624,6 +644,10 @@ def send_list(elements, buttons)
     current_store_categories = groceries.top_categories
     message.reply(text: I18n.t("more_items_from_store_select_category", name: display_name))
     Grocery.send_store_categories(message, current_store_categories, order_id)
+  end
+
+  def name
+    return "#{first_name} #{last_name}"
   end
 
   def send_delivery_success(message)
@@ -719,6 +743,9 @@ def send_list(elements, buttons)
     if message.text.to_s.downcase.include?("update location")
       ask_for_location
     end
+    if message.text.to_s.downcase.include?("send money")
+      #todo
+    end
     if self.state.blank?
       self.state = "state_ask_for_lang"
     end
@@ -729,13 +756,16 @@ def send_list(elements, buttons)
       send_welcome_message(message)
     when "state_ask_for_business"
       Business.ask_for_business(self, message)
+    when "state_get_house_details"
+      update_attributes(house_details: message.text, state: "state_done")
+      ask_for_location
     when "state_get_house_img"
       res = []
       message.attachments.each do |a|
         res << a.payload.url
       end
-      update_attributes(house_images: res)
-      ask_for_location
+      update_attributes(house_images: res[0], state: "state_get_house_details")
+      send_message(text: "Please tell more info about your apartment like number of rooms, amenities etc")
     when "state_get_car_details"
       update_attributes(car_details: message.text, state: "state_done")
       send_message(text: "Car details has been updated! You can now update your location from menu or simple type update location for getting nearby customers")
@@ -831,6 +861,21 @@ def send_list(elements, buttons)
     end
     if !elements.blank?
       send_list(elements, buttons)
+    end
+  end
+
+  def send_generic(elements)
+    this_times = (elements.count/10.0).ceil
+    this_times.times do |i|
+      send_message(
+        "attachment": 
+        {
+          "type": "template",
+          "payload": {
+            "template_type": "generic",
+            "elements": elements[i*10..(i*10)+9]
+          }
+        })
     end
   end
 
