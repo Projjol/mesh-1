@@ -168,12 +168,36 @@ class Business
 
   def self.send_nearby_professional(user, prof_index)
     prof_index = prof_index.to_i
-    user.send_message(text: "Sending details nearby #{Business::TYPE_OF_PROFFESSIONS[prof_index]}")
+    profession_name = Business::TYPE_OF_PROFFESSIONS[prof_index]
+    user.send_message(text: "Sending details of nearby #{Business::TYPE_OF_PROFFESSIONS[prof_index]}")
+    elements = []
+    User.professional_services.where("(json_store ->> 'profession') = ?", prof_index.to_s).each do |driver|
+      buttons = []
+      distance = Grocery.cal_distance(driver.latlong, user.latlong)/1000.0 rescue 0.0
+      distance = distance.round(2)
+      buttons << {
+        title: I18n.t("call"),
+        type: "phone_number",
+        payload: driver.phone
+      }
+      elements << {
+        title: "Name: #{driver.name}",
+        subtitle: "#{distance}km - #{profession_name}",
+        buttons: buttons
+      }
+    end
+    if elements.blank?
+      user.send_message(text: "No result")
+    else
+      user.send_message(text: "Total #{elements.count} results")
+      user.send_generic(elements)
+    end
   end
 
   def self.send_nearby_home_services(user, prof_index)
     prof_index = prof_index.to_i
-    user.send_message(text: "Sending details nearby #{Business::TYPE_OF_HOME_SERVICES[prof_index]}")
+    user.send_message(text: "Sending details of nearby #{Business::TYPE_OF_HOME_SERVICES[prof_index]}")
+    
   end
 
   def self.create_cabs
@@ -193,6 +217,54 @@ class Business
             "car_no": "MH #{Random.rand(9999) }",
             "car_details": car_details,
             "type_of_business": "uberkiller",
+            "phone": "#{Random.rand(10**10)}",
+          },
+          "role": "business",
+          "fb_id": "A144697749532#{Random.rand(1000)}"
+          }
+      User.create(json)
+    end
+  end
+
+  def self.create_prof
+    20.times do |i|
+      profession = Random.rand(TYPE_OF_PROFFESSIONS.count)
+      name = "#{TYPE_OF_PROFFESSIONS[profession]} #{i}"
+      
+      json = {
+          "first_name": name,
+          "last_name": "",
+          "json_store": {
+            "state": "state_done",
+            "lang": "en",
+            "latlong": [Random.rand(90), Random.rand(180)],
+            "display_name": name,
+            "profession": profession,
+            "type_of_business": "professional_services",
+            "phone": "#{Random.rand(10**10)}",
+          },
+          "role": "business",
+          "fb_id": "A144697749532#{Random.rand(1000)}"
+          }
+      User.create(json)
+    end
+  end
+
+ def self.create_home
+    20.times do |i|
+      profession = Random.rand(TYPE_OF_HOME_SERVICES.count)
+      name = "#{TYPE_OF_HOME_SERVICES[profession]} #{i}"
+      
+      json = {
+          "first_name": name,
+          "last_name": "",
+          "json_store": {
+            "state": "state_done",
+            "lang": "en",
+            "latlong": [Random.rand(90), Random.rand(180)],
+            "display_name": name,
+            "home_service": profession,
+            "type_of_business": "housejoykiller",
             "phone": "#{Random.rand(10**10)}",
           },
           "role": "business",

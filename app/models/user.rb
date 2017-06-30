@@ -587,8 +587,10 @@ def send_list(elements, buttons)
       send_message(text: I18n.t('delivery_distance_success', distance: distance))
     elsif payload.include?("book_cab")
       driver_id = payload.split(":").last
-      #todo craete this function
+      #tonodo craete this function
       # book_cab(driver_id)
+      ask_for_location
+      send_message(text: "Driver will be reaching your location soon once you send us your location")
     elsif payload.include?("selected_category")
       order_id = payload.split(":").last
       category_id = payload.split(":")[-2]
@@ -695,7 +697,23 @@ def send_list(elements, buttons)
       # #todo
       # hanlde quick reply
       if !text.blank?
+        # quick_replies = message.
         @telegram_client.send_message chat_id: telegram_id, text: text
+        quick_replies = message.quick_replies rescue nil
+        if !quick_replies.blank?
+          tele_buttons = []
+          quick_replies.each do |qr|
+            title = qr.title rescue nil
+            payload = qr.payload rescue nil
+            if !title.blank?
+              tele_buttons << {
+                text: title,
+                callback_data: payload
+              }
+            end
+          end
+          @telegram_client.send_message chat_id: telegram_id, text: ".", reply_markup: {inline_keyboard: [tele_buttons]} if !tele_buttons.blank?
+        end
       elsif buttons
         text = message.attachment.payload.text rescue ""
         buttons = message.attachment.payload.buttons rescue []
@@ -756,6 +774,12 @@ def send_list(elements, buttons)
           end
         end
       end
+        # @telegram_client.send_message chat_id: telegram_id, text: ele.title + "\n" + ele.subtitle, reply_markup: {inline_keyboard: tele_buttons}
+        # "view wallets"
+        # "show transactions"
+        # "update location"
+        # "change role"
+        # "more settings"
     end
   end
 
@@ -830,16 +854,31 @@ def send_list(elements, buttons)
     end
     if message.text.to_s.downcase.include?("update location")
       ask_for_location
+      return
+    end
+    if message.text.to_s.downcase.include?("change role")
+      send_welcome_message
+      return
+    end
+    if message.text.to_s.downcase.include?("more settings")
+      send_more_settings
+      return
+    end
+    if message.text.to_s.downcase.include?("view wallets")
+      send_wallets
+      return
     end
     if message.text.to_s.downcase.include?("send money")
-      #todo
-      send_message(text: "Please enter email address of user you want to sent money to and amuont space seperated\nExample: mohmun16@gmail.com 10")
+      send_message(text: "Sending your current wallets")
+      send_wallets
+      send_message(text: "Please enter email address of user you want to sent money to and amuont space seperated\nExample: example@abc.com 10")
       update_attributes(state: "state_send_money")
       return
     end
     if message.text.to_s.downcase.include?("receive money")
-      #todo
-      send_message(text: "Please enter email address of user you want to receive money from and amuont space seperated\nExample: mohmun16@gmail.com 10")
+      send_message(text: "Sending your current wallets")
+      send_wallets
+      send_message(text: "Please enter email address of user you want to receive money from and amuont space seperated\nExample: example@abc.com 10")
       update_attributes(state: "state_receive_money")
       return
     end
