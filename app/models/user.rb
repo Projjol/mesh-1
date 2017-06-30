@@ -1,5 +1,5 @@
 class User < ActiveRecord::Base
-  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession, :house_details
+  store_accessor :json_store, :profile_pic, :state, :lang, :latlong, :delivery, :delivery_distance, :display_name, :phone, :sso_details, :auth, :wallet_from, :type_of_business, :car_details, :car_no, :house_images, :profession, :house_details, :email
   has_and_belongs_to_many :groceries, join_table: "user_grocery_mappings"
   has_many :orders
   scope :business, -> {where(role: "business")}
@@ -17,6 +17,10 @@ class User < ActiveRecord::Base
     user.send_select_language(message)
   end
 
+  def self.find_by_email(email)
+    User.where("(json_store ->> 'email') = ?", email).last
+  end
+
   after_initialize :init
 
   def init
@@ -31,7 +35,8 @@ class User < ActiveRecord::Base
   puts s
     res = `#{s}`
     update_attributes(auth: JSON.parse(res))
-    update_attributes(sso_details: get_details_from_digitaltown, state: "state_done")
+    sso_details = get_details_from_digitaltown
+    update_attributes(sso_details: sso_details, state: "state_done", first_name: sso_details["first_name"], last_name: sso_details["last_name"], email: sso_details["email"])
     send_message(text: "You are successfully logged in.")
     if role == "business"
       Business.ask_for_business(self)
@@ -720,6 +725,15 @@ def send_list(elements, buttons)
       order_id = payload.split(":").last
       order = Order.find(order_id)
       order.place(message)
+    elsif payload.include?("money_from")
+      to = payload.split(":")[-2]
+      from = payload.split(":")[-3]
+      amount = payload.split(":")[-1]
+      User.send_money(from, to, amount)
+    elsif payload.include?("declined_money")
+      user_id = payload.split(":").last
+      user = User.find user_id
+      user.send_message(text: "#{name} declined transaction")
     end
   end
 
@@ -745,6 +759,15 @@ def send_list(elements, buttons)
     end
     if message.text.to_s.downcase.include?("send money")
       #todo
+      send_message(text: "Please enter email address of user you want to sent money to and amuont space seperated\nExample: mohmun16@gmail.com 10")
+      update_attributes(state: "state_send_money")
+      return
+    end
+    if message.text.to_s.downcase.include?("receive money")
+      #todo
+      send_message(text: "Please enter email address of user you want to receive money from and amuont space seperated\nExample: mohmun16@gmail.com 10")
+      update_attributes(state: "state_receive_money")
+      return
     end
     if self.state.blank?
       self.state = "state_ask_for_lang"
@@ -773,6 +796,34 @@ def send_list(elements, buttons)
     when "state_get_car_no"
       update_attributes(car_no: message.text, state: "state_get_car_details")
       send_message(text: "Your car number is updated! Please give us brief discription about you car. It will help customers finding one")
+    when "state_send_money"
+      email,amount = message.text.split(" ") rescue [nil,nil]
+      if !email.blank? && !amount.blank?
+        user = User.find_by_email(email) rescue nil
+        if user.blank?
+          send_message(text: "User not found")
+        else
+          User.send_money(self.id, user.id, amount)
+        end
+      end
+      state_done
+    when "state_receive_money"
+      email,amount = message.text.split(" ") rescue [nil,nil]
+      if !email.blank? && !amount.blank?
+        user = User.find_by_email(email)
+        user.send_message(text: "#{name} is requesting #{amount} money from you. Do you want to continue?", quick_replies: [
+        {
+          title: I18n.t("yes"),
+          content_type: "text",
+          payload: "money_from:#{user.id}:#{self.id}:#{amount}"
+        },{
+          title: I18n.t("no"),
+          content_type: "text",
+          payload: "declined_money:#{self.id}"
+        }
+      ])
+      end
+      state_done
     when "state_get_name"
       update_attributes(display_name: message.text, state: "state_done")
       message.reply(text: I18n.t("update_name_success", name: message.text))
@@ -786,6 +837,7 @@ def send_list(elements, buttons)
       wallet_transfer(wallet_from, to_id, amount)
       send_message(text: "Money transferred!")
       update_attributes(state: "state_done")
+      send_wallets
     when "state_ask_for_order"
       # query = message.text
       if message.text.size > 2
@@ -801,6 +853,10 @@ def send_list(elements, buttons)
     end
   end
 
+  def state_done
+    update_attributes(state: "state_done")
+  end
+
   def ask_for_groceries
     # Grocery.send_select_list(message, 1)
     send_message(text: I18n.t("select_grocery"))
@@ -811,6 +867,18 @@ def send_list(elements, buttons)
     # message.reply(text: "Onboarded")
     # send_more_settings(message)
     Business.ask_for_business(self)
+  end
+
+  def self.send_money(from, to, amount)
+    from_user = User.find(from)
+    to_user = User.find(to)
+    from_walllet_id = from_user.get_wallets.result.last.data.last.wallet_id
+    to_walllet_id = to_user.get_wallets.result.last.data.last.wallet_id
+    from_user.wallet_transfer(from_walllet_id, to_walllet_id, amount)
+    from_user.send_message(text: "Transaction complete! You have sent #{amount} to #{to_user.name}")
+    to_user.send_message(text: "Transaction complete! You have received #{amount} from #{from_user.name}")
+    from_user.send_wallets
+    to_user.send_wallets
   end
 
   def send_select_list_categories(message, page)
