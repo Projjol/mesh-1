@@ -14,6 +14,8 @@ Bot.on :message do |message|
   if user.blank?
     User.create_from_message(message)
   else
+    user.current_bot = "fb"
+    user.save
     user.start_flow(message)
   end
 end
@@ -29,6 +31,8 @@ Bot.on :postback do |postback|
   if user.blank?
     User.create_from_message(postback)
   else
+    user.current_bot = "fb"
+    user.save
     user.on_postback(postback)
   end
   
