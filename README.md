@@ -51,4 +51,4 @@ Feature are very basic, I would say what I have implemented is 0.01% of what it 
 # Screenshots
 
 
-![Screenshot](screenshot/1.png)
+![Screenshot](screenshots/1.png)
