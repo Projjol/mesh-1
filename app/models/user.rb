@@ -56,8 +56,12 @@ class User < ActiveRecord::Base
     user = User.find_by_email(email)
     if user.blank?
       user = self
+    else
+      user.telegram_id = self.telegram_id
+      user.fb_id = self.fb_id
+      user.save
+      self.delete
     end
-
     user.update_attributes(sso_details: sso_details, state: "state_done", first_name: sso_details["first_name"], last_name: sso_details["last_name"], email: sso_details["email"], auth: JSON.parse(res))
     user.send_message(text: "You are successfully logged in.")
     if role == "business"
@@ -318,16 +322,16 @@ def send_list(elements, buttons)
         buttons_ = buttons
       end
       send_message(
-      "attachment": 
-      {
-        "type": "template",
-        "payload": {
-          "template_type": "list",
-          "top_element_style": "compact",
-          "elements": elements[i..j-1],
-          "buttons": buttons_
-        }
-      })
+      {"attachment": 
+            {
+              "type": "template",
+              "payload": {
+                "template_type": "list",
+                "top_element_style": "compact",
+                "elements": elements[i..j-1],
+                "buttons": buttons_
+              }
+            }}, false, true)
       i = j
     end
   end
@@ -346,14 +350,14 @@ def send_list(elements, buttons)
       buttons << {type: 'postback', title: v, payload: k}
     end
     send_message(
-      attachment: {
-       type: 'template',
-        payload: {
-          template_type: 'button',
-          text: text,
-          buttons: buttons
-        }
-      }
+      {attachment: {
+             type: 'template',
+              payload: {
+                template_type: 'button',
+                text: text,
+                buttons: buttons
+              }
+            }}, true
     )
   end
 
@@ -365,21 +369,21 @@ def send_list(elements, buttons)
 
   def ask_for_login
     send_message(
-      attachment: {
-       type: 'template',
-        payload: {
-          template_type: 'button',
-          text: "Please login through Digital Town",
-          buttons: [
-            {
-              type: "web_url",
-              url: Rails.application.routes.url_helpers.get_dt_oauth_url(host: ENV["HOST"], user_id: id),
-              title: "Login",
-              webview_height_ratio: "tall"
-            }
-          ]
-        }
-      }
+      {attachment: {
+             type: 'template',
+              payload: {
+                template_type: 'button',
+                text: "Please login through Digital Town",
+                buttons: [
+                  {
+                    type: "web_url",
+                    url: Rails.application.routes.url_helpers.get_dt_oauth_url(host: ENV["HOST"], user_id: id),
+                    title: "Login",
+                    webview_height_ratio: "tall"
+                  }
+                ]
+              }
+            }}, true
     )
   end
   CURRENCY = JSON.parse(File.read("currency.json"))["result"].first["data"]
@@ -497,12 +501,12 @@ def send_list(elements, buttons)
     message = postback
     if payload == "continue_customer"
       update_attributes(role: "customer", state: "state_ask_for_login")
-      postback.reply(text: I18n.t('signed_up_as_customer'))
+      send_message(text: I18n.t('signed_up_as_customer'))
       # ask_for_location(message)
       ask_for_login
     elsif payload == "continue_business_owner"
       update_attributes(role: "business", state: "state_ask_for_login")
-      postback.reply(text: I18n.t('signed_up_as_business'))
+      send_message(text: I18n.t('signed_up_as_business'))
       ask_for_login
       # ask_for_business(message)
     # end
@@ -679,7 +683,7 @@ def send_list(elements, buttons)
       )
   end
 
-  def send_message(message)
+  def send_message(message, buttons = false, list = false)
     if current_bot.blank? || current_bot == "fb"
       payload = {
               recipient: {id: fb_id},
@@ -688,13 +692,71 @@ def send_list(elements, buttons)
       Facebook::Messenger::Bot.deliver(payload, access_token: ENV['ACCESS_TOKEN'])
     else
       text = message.text rescue nil
+      # #todo
+      # hanlde quick reply
       if !text.blank?
         @telegram_client.send_message chat_id: telegram_id, text: text
+      elsif buttons
+        text = message.attachment.payload.text rescue ""
+        buttons = message.attachment.payload.buttons rescue []
+        tele_buttons = []
+        buttons.each do |b|
+          b_hash = { text: b.title}
+          payload = b.payload rescue nil
+          if payload
+            b_hash[:callback_data] = b.payload
+          end
+          url = b.url rescue nil
+          if url
+            b_hash[:url] = url
+          end
+          tele_buttons << b_hash
+        end
+        @telegram_client.send_message chat_id: telegram_id, text: text, reply_markup: {inline_keyboard: [tele_buttons]}
+      elsif list
+        # {"attachment": 
+        #     {
+        #       "type": "template",
+        #       "payload": {
+        #         "template_type": "list",
+        #         "top_element_style": "compact",
+        #         "elements": elements[i..j-1],
+        #         "buttons": buttons_
+        #       }
+        #     }}, false, true)
+        tele_buttons = []
+        message.attachment.payload.elements.each do |ele|
+          tele_buttons = [[{
+            text: "Select",
+            callback_data: ele.buttons.last.payload
+          }]]
+          @telegram_client.send_message chat_id: telegram_id, text: ele.title + "\n" + ele.subtitle, reply_markup: {inline_keyboard: tele_buttons}
+        end
       else
-        @telegram_client.send_message chat_id: telegram_id, text: 'Test', reply_markup: {inline_keyboard: [[{text: "Chus", callback_data: "disable_delivery"}]]}
+        # send_message(
+        # "attachment": 
+        # {
+        #   "type": "template",
+        #   "payload": {
+        #     "template_type": "generic",
+        #     "elements": elements[i*10..(i*10)+9]
+        #   }
+        # })
+        generic = message.attachment.payload.template_type rescue nil
+        if generic == "generic"
+          message.attachment.payload.elements.each do |ele|
+            tele_buttons = []
+            ele.buttons.each do |b|
+              tele_buttons << [{
+                text: b.title,
+                callback_data: b.payload
+              }]
+            end
+            @telegram_client.send_message chat_id: telegram_id, text: ele.title + "\n" + ele.subtitle, reply_markup: {inline_keyboard: tele_buttons}
+          end
+        end
       end
     end
-
   end
 
   def send_more_settings(message)
@@ -703,8 +765,8 @@ def send_list(elements, buttons)
       send_buttons(message, I18n.t("more_settings"), 
         { 
           "update_name" => I18n.t("update_name_menu"),
-          "update_phone" => I18n.t("update_phone_menu"),
-          "update_grocery" => I18n.t("update_grocery"),
+          "update_phone" => I18n.t("update_phone_menu")
+          # "update_grocery" => I18n.t("update_grocery"),
         }
       )
       send_buttons(message, "more options..", 
@@ -859,6 +921,8 @@ def send_list(elements, buttons)
         send_message(text: I18n.t("enter_minimum_3", query: message.text))
       end
       update_attributes(state: "state_done")
+    when "state_ask_for_login"
+      ask_for_login
     else
       send_select_language(message)
       # send_welcome_message(message)
